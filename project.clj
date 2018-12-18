@@ -1,6 +1,6 @@
-(defproject riverford/locket "2018.12.18-06"
+(defproject riverford/locket "2018.12.18-07"
   :description "A pocket-sized state machine library for use with re-frame"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/riverford/locket"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
