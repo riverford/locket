@@ -1,8 +1,8 @@
+![Logo](/locket.png)
+
 # Locket
 
 A pocket-sized state machine library for re-frame. 
-
-![Logo](/locket.png)
 
 ## Rationale
 
