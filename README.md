@@ -2,7 +2,7 @@
 
 A pocket-sized state machine library for re-frame. 
 
-![Logo][/locket.png]
+![Logo](/locket.png)
 
 ## Rationale
 
