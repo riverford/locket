@@ -16,7 +16,7 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
 
 ## Usage
 
-Set up handlers as follows: 
+![states](/states.gif)
 
 ``` clojure
 (ns example.events
@@ -34,6 +34,9 @@ Set up handlers as follows:
                  :logged-in {:auth/logout :logging-out}
                  :logging-out {:auth.logout/success :ready}
                  :error {:auth/login :logging-in}}})
+
+;; Installing the state machine (via `locket/install-state-machine`) 
+;; sets up handlers and subscriptions. 
 
 (re-frame/reg-event-fx
  ::init
@@ -55,11 +58,11 @@ Set up handlers as follows:
                        :dispatch [:auth.logout/success]}]}))
 ```
 
-Then, a view can be built that uses the exposed `state` subscription. 
-
-![states](/states.gif)
-
 ``` clojure
+
+(ns <example>.views
+  (:require [re-frame.core :as re-frame]))
+   
 (defn main-panel []
   (let [state (re-frame/subscribe [:auth/state])
         transitions (re-frame/subscribe [:auth/transitions])]
