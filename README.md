@@ -16,7 +16,7 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
 
 ## Usage
 
-![states](/states.gif)
+![states](/states2.gif)
 
 ``` clojure
 (ns example.events
