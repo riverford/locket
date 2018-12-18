@@ -1,4 +1,4 @@
-![Logo](/locket3.png)
+![Logo](/locket4.png)
 
 # Locket
 
