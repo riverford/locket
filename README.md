@@ -12,7 +12,7 @@ If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14
 
 This does exactly that, by providing a re-frame effect handler that registers events for all the state machine transitions, so you don't have to. 
 
-This not only reduces boiler plate, but also eliminates the risk of your state getting out of sync (if you forget to call `update-state`). 
+This not only reduces boiler plate, but also eliminates the risk of your state getting out of sync (if you forget to call `update-next-state`). 
 
 ## Usage
 
