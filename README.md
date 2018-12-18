@@ -28,8 +28,7 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
                  :logging-in {:auth.login/success :logged-in
                               :auth.login/failure :error}
                  :logged-in {:auth/logout :logging-out}
-                 :logging-out {:auth.logout/success :ready
-                               :auth.logout/failure :error}
+                 :logging-out {:auth.logout/success :ready}
                  :error {:auth/login :logging-in}}})
 
 (re-frame/reg-event-fx
