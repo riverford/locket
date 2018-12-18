@@ -21,16 +21,16 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
    [example.db :as db]))
    
 (def state-machine
-  {:id :login
-   :path [:login/state]
+  {:id :auth
+   :path [:auth/state]
    :initial-state :ready
-   :transitions {:ready {:login/login :logging-in}
-                 :logging-in {:login.login/success :logged-in
-                              :login.login/failure :error}
-                 :logged-in {:login/logout :logging-out}
-                 :logging-out {:login.logout/success :ready
-                               :login.logout/failure :error}
-                 :error {:login/login :logging-in}}})
+   :transitions {:ready {:auth/login :logging-in}
+                 :logging-in {:auth.login/success :logged-in
+                              :auth.login/failure :error}
+                 :logged-in {:auth/logout :logging-out}
+                 :logging-out {:auth.logout/success :ready
+                               :auth.logout/failure :error}
+                 :error {:auth/login :logging-in}}})
 
 (re-frame/reg-event-fx
  ::init
@@ -40,16 +40,16 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
       :locket/install-state-machine state-machine})))
 
 (re-frame/reg-event-fx
-  :login/login
+  :auth/login
   (fn [cofx]
     {:dispatch-later [{:ms 3000
-                       :dispatch [:login.login/success]}]}))
+                       :dispatch [:auth.login/success]}]}))
 
 (re-frame/reg-event-fx
-  :login/logout
+  :auth/logout
   (fn [cofx]
     {:dispatch-later [{:ms 3000
-                       :dispatch [:login.logout/success]}]}))
+                       :dispatch [:auth.logout/success]}]}))
 ```
 
 ## License
