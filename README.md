@@ -60,7 +60,7 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
 
 ``` clojure
 
-(ns <example>.views
+(ns example.views
   (:require [re-frame.core :as re-frame]))
    
 (defn main-panel []
