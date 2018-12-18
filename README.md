@@ -16,6 +16,8 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
 
 ## Usage
 
+Set up handlers as follows: 
+
 ``` clojure
 (ns example.events
   (:require
@@ -52,6 +54,34 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
     {:dispatch-later [{:ms 3000
                        :dispatch [:auth.logout/success]}]}))
 ```
+
+Then, a view can be built that uses the exposed `state` subscription. 
+
+![states](/states.gif)
+
+``` clojure
+(defn main-panel []
+  (let [state (re-frame/subscribe [:auth/state])
+        transitions (re-frame/subscribe [:auth/transitions])]
+    [:div {:class "pa5"}
+     [:p {:class "f3"} "Current state"]
+     [:div {:class "flex flex-row items-center"}
+      [:p {:class "f5 mr3"} @state]
+      (when (contains? #{:logging-in :logging-out} @state)
+        [:img {:src "https://cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif"
+               :style {:width 20
+                       :height 20}}])]
+     [:p {:class "f3"} "Transitions"]
+     (for [t @transitions]
+       [:p {:key (str t)
+            :class "f5"
+            :style {:cursor "pointer"}
+            :on-click (fn [_]
+                        (re-frame/dispatch [t]))}
+        (name t)])]))
+```
+
+
 
 ## License
 
