@@ -14,7 +14,7 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
 
 ## Usage
 
-```
+``` clojure
 (ns example.events
   (:require
    [re-frame.core :as re-frame]
@@ -49,7 +49,8 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
   :login/logout
   (fn [cofx]
     {:dispatch-later [{:ms 3000
-                       :dispatch [:login.logout/success]}]}))```
+                       :dispatch [:login.logout/success]}]}))
+```
 
 ## License
 
