@@ -33,7 +33,7 @@
                 (let [{:keys [db event]} (get context :coeffects)
                       [ev & args] event
                       current-state (get-in db path)
-                      new-state (if (= ev (keyword (name id) "set-start-state"))
+                      new-state (if (= ev (keyword (name id) "set-initial-state"))
                                   initial-state
                                   (get-in state-machine [:transitions current-state ev]))
                       new-db (assoc-in db path new-state)]
@@ -50,8 +50,8 @@
   "Installs a state-machine.
    This is a side-effecting operation that adds handlers."
   [state-machine]
-  (let [{:keys [id path]} state-machine
-        evs (conj (transitions state-machine) (keyword (name id) "set-start-state"))
+  (let [{:keys [id path initial-state]} state-machine
+        evs (conj (transitions state-machine) (keyword (name id) "set-initial-state"))
         interceptor (interceptor state-machine)]
     (doseq [ev evs
             :let [old-interceptor (registrar/get-handler :event ev)]]
@@ -59,6 +59,6 @@
         (do (re-frame/clear-event ev)
             (events/register ev [old-interceptor interceptor]))
         (events/register ev [cofx/inject-db fx/do-fx interceptor])))
-    (re-frame/dispatch [(keyword (name id) "set-start-state")])))
+    (re-frame/dispatch [(keyword (name id) "set-initial-state")])))
 
 (re-frame/reg-fx :locket/install-state-machine install)
