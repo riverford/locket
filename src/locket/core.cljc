@@ -42,8 +42,8 @@
                                                         (cond
                                                           (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                           (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
-                  (when (contains? modifiers :debug)
-                    (println (str "[ " current-state " " ev " ] -> " new-state)))
+                  (when (contains? modifiers :locket/debug-transition)
+                    (println (str id " " current-state "\n------\n " ev " -> " new-state "\n")))
                   (assoc-in context [:effects :db] new-db))))))
 
 (defn install
@@ -57,7 +57,7 @@
             :let [old-interceptor (registrar/get-handler :event ev)]]
       (if old-interceptor
         (do (re-frame/clear-event ev)
-            (events/register ev [old-interceptor interceptor]))
+            (events/register ev [interceptor old-interceptor]))
         (events/register ev [cofx/inject-db fx/do-fx interceptor])))
     (re-frame/dispatch [(keyword (name id) "set-initial-state")])))
 

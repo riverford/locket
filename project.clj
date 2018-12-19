@@ -1,4 +1,4 @@
-(defproject riverford/locket "2018.12.18-10"
+(defproject riverford/locket "2018.12.18-11"
   :description "A pocket-sized state machine library for use with re-frame"
   :url "https://github.com/riverford/locket"
   :license {:name "Eclipse Public License"
