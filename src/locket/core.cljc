@@ -42,9 +42,14 @@
                                                         (cond
                                                           (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                           (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
-                  (when (contains? modifiers :locket/debug-transition)
-                    (println (str id " " current-state "\n------\n " ev " -> " new-state "\n")))
-                  (assoc-in context [:effects :db] new-db))))))
+                  (when (contains? modifiers :locket/debug-transitions)
+                    (println (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
+                  (assoc-in context [:coeffects :db] new-db)))
+      :after (fn [context]
+               (if (and (get-in context [:coeffects :db])
+                        (not (get-in context [:effects :db])))
+                 (assoc-in context [:effects :db] (get-in context [:coeffects :db]))
+                 context)))))
 
 (defn install
   "Installs a state-machine.
@@ -54,10 +59,13 @@
         evs (conj (transitions state-machine) (keyword (name id) "set-initial-state"))
         interceptor (interceptor state-machine)]
     (doseq [ev evs
-            :let [old-interceptor (registrar/get-handler :event ev)]]
-      (if old-interceptor
-        (do (re-frame/clear-event ev)
-            (events/register ev [old-interceptor interceptor]))
+            :let [old-interceptors (registrar/get-handler :event ev)]]
+      (if old-interceptors
+        ;; insert the state machine transition before the handler
+        (let [new-interceptors (concat (butlast old-interceptors)
+                                       [interceptor (last old-interceptors)])]
+          (re-frame/clear-event ev)
+          (events/register ev new-interceptors))
         (events/register ev [cofx/inject-db fx/do-fx interceptor])))
     (re-frame/dispatch [(keyword (name id) "set-initial-state")])))
 

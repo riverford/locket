@@ -2,25 +2,26 @@
 
 # Locket
 
-`[riverford/locket "2018.12.18-09"]`
+`[riverford/locket "2018.12.18-12"]`
 
 A pocket-sized state machine library for re-frame. 
 
 ## Rationale
 
-If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14/restate-your-ui-creating-a-user-interface-with-re-frame-and-state-machines, you might find yourself wanting a library to reduce the accompanying boiler plate a little. 
+If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14/restate-your-ui-creating-a-user-interface-with-re-frame-and-state-machines, you might find yourself wanting a library to reduce the accompanying boiler-plate a little. 
 
 This does exactly that, by providing a re-frame effect handler that registers events for all the state machine transitions, so you don't have to. 
 
-This not only reduces boiler plate, but also eliminates the risk of your state getting out of sync (if you forget to call `update-next-state`). 
+This not only reduces boiler-plate, but also eliminates the risk of your state getting out of sync (i.e. if you forget to call `update-next-state`). 
 
 ## Usage
 
 ![states](/states2.gif)
 
 ``` clojure
-(ns example.events
+(ns example.core
   (:require
+   [locket.core :as locket]
    [re-frame.core :as re-frame]
    [example.db :as db]))
    
@@ -56,13 +57,20 @@ This not only reduces boiler plate, but also eliminates the risk of your state g
   (fn [cofx]
     {:dispatch-later [{:ms 3000
                        :dispatch [:auth.logout/success]}]}))
-```
 
-``` clojure
+;; Subscriptions for the current state
+(re-frame/reg-sub 
+  :auth/state
+  (fn [db]
+    (get db :auth/state)))
+    
+(re-frame/reg-sub 
+  :auth/transitions
+  :<- [:auth/state]
+  (fn [state]
+    (locket/transitions state-machine state)))
 
-(ns example.views
-  (:require [re-frame.core :as re-frame]))
-   
+;; A view showing the current state and available transitions
 (defn main-panel []
   (let [state (re-frame/subscribe [:auth/state])
         transitions (re-frame/subscribe [:auth/transitions])]
