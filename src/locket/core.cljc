@@ -57,7 +57,7 @@
             :let [old-interceptor (registrar/get-handler :event ev)]]
       (if old-interceptor
         (do (re-frame/clear-event ev)
-            (events/register ev [interceptor old-interceptor]))
+            (events/register ev [old-interceptor interceptor]))
         (events/register ev [cofx/inject-db fx/do-fx interceptor])))
     (re-frame/dispatch [(keyword (name id) "set-initial-state")])))
 
