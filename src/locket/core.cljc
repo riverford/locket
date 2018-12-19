@@ -26,7 +26,7 @@
   "Generic interceptor for state machine interactions.
    Updates the state of the db in the given path"
   [state-machine]
-  (let [{:keys [id path initial-state]} state-machine]
+  (let [{:keys [id path initial-state modifiers]} state-machine]
     (re-frame/->interceptor
       :id (keyword (name id) "interceptor")
       :before (fn [context]
@@ -42,6 +42,8 @@
                                                         (cond
                                                           (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                           (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
+                  (when (contains? modifiers :debug)
+                    (println (str "[ " current-state " " ev " ] -> " new-state)))
                   (assoc-in context [:effects :db] new-db))))))
 
 (defn install
