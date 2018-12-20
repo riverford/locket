@@ -1,6 +1,7 @@
 (ns locket.core
   (:require [clojure.string :as string]
             [re-frame.core :as re-frame]
+            [re-frame.loggers :as loggers]
             [re-frame.registrar :as registrar]
             [re-frame.events :as events]
             [re-frame.cofx :as cofx]
@@ -26,7 +27,7 @@
   "Generic interceptor for state machine interactions.
    Updates the state of the db in the given path"
   [state-machine]
-  (let [{:keys [id path initial-state modifiers]} state-machine]
+  (let [{:keys [id path initial-state debug?]} state-machine]
     (re-frame/->interceptor
       :id (keyword (name id) "interceptor")
       :before (fn [context]
@@ -42,8 +43,8 @@
                                                         (cond
                                                           (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                           (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
-                  (when (contains? modifiers :locket/debug-transitions)
-                    (println (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
+                  (when debug?
+                    (loggers/log (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
                   (assoc-in context [:coeffects :db] new-db)))
       :after (fn [context]
                (if (and (get-in context [:coeffects :db])
