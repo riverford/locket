@@ -44,7 +44,7 @@
                                                           (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                           (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
                   (when debug?
-                    (loggers/log (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
+                    (loggers/console :log (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
                   (assoc-in context [:coeffects :db] new-db)))
       :after (fn [context]
                (if (and (get-in context [:coeffects :db])
