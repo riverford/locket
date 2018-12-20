@@ -41,7 +41,7 @@
                                                  (cond
                                                    (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                    (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
-                  (when (and debug? (nil? new-state))
+                  (when (and debug? (some? new-state))
                     (loggers/console :log (str "[" (or current-state "<nil>") ", " ev "] -> " new-state)))
                   (if (and (nil? new-state) (contains? on-invalid-transition :prevent))
                     (assoc context :queue nil)
