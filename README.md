@@ -43,7 +43,7 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
    ;; optional - set to true to log all transitions
    :debug? false 
    
-   ;; optional - set behaviours for when events fire which do not have valid transitions from the current state
+   ;; optional - behaviours for when events fire that do not have valid transitions from the current state
    ;;  :warn - prints a warning message to the console 
    ;;  :prevent - prevent the reframe event from firing
    :on-invalid-transition #{:warn :prevent}})
