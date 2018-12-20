@@ -27,37 +27,35 @@
   "Generic interceptor for state machine interactions.
    Updates the state of the db in the given path"
   [state-machine]
-  (let [{:keys [id path initial-state debug?]} state-machine]
+  (let [{:keys [path debug? on-invalid-transition]} state-machine]
     (re-frame/->interceptor
-      :id (keyword (name id) "interceptor")
+      :id path
       :before (fn [context]
                 (let [{:keys [db event]} (get context :coeffects)
                       [ev & args] event
                       current-state (get-in db path)
-                      new-state (if (= ev (keyword (name id) "set-initial-state"))
-                                  initial-state
-                                  (get-in state-machine [:transitions current-state ev]))
-                      new-db (assoc-in db path new-state)]
-                  (assert (not (nil? new-state)) (let [expected (transitions state-machine current-state)]
-                                                   (str "No transition found for event " ev " in state " current-state
-                                                        (cond
-                                                          (= (count expected) 1) (str "\nExpected:\n" (first expected))
-                                                          (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected))))))
+                      new-state (or (get-in state-machine [:transitions current-state ev])
+                                    (when (= :warn on-invalid-transition)
+                                      (loggers/console :warn (let [expected (transitions state-machine current-state)]
+                                                               (str "No transition found for event " ev " in state " current-state
+                                                                    (cond
+                                                                      (= (count expected) 1) (str "\nExpected:\n" (first expected))
+                                                                      (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
+                                    current-state)]
                   (when debug?
-                    (loggers/console :log (str "\n" id " " current-state "\n------\n" ev " -> " new-state)))
-                  (assoc-in context [:coeffects :db] new-db)))
+                    (loggers/console :log (str "\n" path " " current-state "\n------\n" ev " -> " new-state)))
+                  (assoc-in context [:coeffects :db] (assoc-in db path new-state))))
       :after (fn [context]
                (if (and (get-in context [:coeffects :db])
                         (not (get-in context [:effects :db])))
                  (assoc-in context [:effects :db] (get-in context [:coeffects :db]))
                  context)))))
 
-(defn install
-  "Installs a state-machine.
-   This is a side-effecting operation that adds handlers."
+(defn add-handlers
+  "Adds all the state machine handlers for transitions"
   [state-machine]
-  (let [{:keys [id path initial-state]} state-machine
-        evs (conj (transitions state-machine) (keyword (name id) "set-initial-state"))
+  (let [{:keys [path]} state-machine
+        evs (transitions state-machine)
         interceptor (interceptor state-machine)]
     (doseq [ev evs
             :let [old-interceptors (registrar/get-handler :event ev)]]
@@ -67,7 +65,14 @@
                                        [interceptor (last old-interceptors)])]
           (re-frame/clear-event ev)
           (events/register ev new-interceptors))
-        (events/register ev [cofx/inject-db fx/do-fx interceptor])))
-    (re-frame/dispatch [(keyword (name id) "set-initial-state")])))
+        (events/register ev [cofx/inject-db fx/do-fx interceptor])))))
 
-(re-frame/reg-fx :locket/install-state-machine install)
+(re-frame/reg-fx :locket/add-handlers add-handlers)
+
+(re-frame/reg-event-fx
+  :locket/install-state-machine
+  (fn [cofx [event state-machine]]
+    (let [{:keys [db]} cofx
+          {:keys [path initial-state]} state-machine]
+      {:locket/add-handlers state-machine
+       :db (assoc-in db path initial-state)})))

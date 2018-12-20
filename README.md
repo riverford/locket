@@ -26,8 +26,7 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
    [example.db :as db]))
    
 (def state-machine
-  {:id :auth
-   :path [:auth/state]
+  {:path [:auth/state]
    :initial-state :ready
    :transitions {:ready {:auth/login :logging-in}
                  :logging-in {:auth.login/success :logged-in
@@ -44,7 +43,7 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
  (fn [cofx _]
    (let [{:keys [db]} cofx]
      {:db db/default-db
-      :locket/install-state-machine state-machine})))
+      :dispatch [:locket/install-state-machine state-machine]})))
 
 (re-frame/reg-event-fx
   :auth/login
