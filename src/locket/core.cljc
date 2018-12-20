@@ -34,17 +34,18 @@
                 (let [{:keys [db event]} (get context :coeffects)
                       [ev & args] event
                       current-state (get-in db path)
-                      new-state (or (get-in state-machine [:transitions current-state ev])
-                                    (when (= :warn on-invalid-transition)
-                                      (loggers/console :warn (let [expected (transitions state-machine current-state)]
-                                                               (str "No transition found for event " ev " in state " current-state
-                                                                    (cond
-                                                                      (= (count expected) 1) (str "\nExpected:\n" (first expected))
-                                                                      (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
-                                    current-state)]
+                      new-state (get-in state-machine [:transitions current-state ev])]
+                  (when (and (nil? new-state) (contains? on-invalid-transition :warn))
+                    (loggers/console :warn (let [expected (transitions state-machine current-state)]
+                                             (str "No transition found for event " ev " in state " current-state
+                                                  (cond
+                                                    (= (count expected) 1) (str "\nExpected:\n" (first expected))
+                                                    (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
                   (when debug?
                     (loggers/console :log (str "\n" path " " current-state "\n------\n" ev " -> " new-state)))
-                  (assoc-in context [:coeffects :db] (assoc-in db path new-state))))
+                  (if (and (nil? new-state) (contains? on-invalid-transition :prevent))
+                    (assoc context :queue nil)
+                    (assoc-in context [:coeffects :db] (assoc-in db path (or new-state current-state))))))
       :after (fn [context]
                (if (and (get-in context [:coeffects :db])
                         (not (get-in context [:effects :db])))
