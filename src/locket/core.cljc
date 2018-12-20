@@ -36,13 +36,13 @@
                       current-state (get-in db path)
                       new-state (get-in state-machine [:transitions current-state ev])]
                   (when (and (nil? new-state) (contains? on-invalid-transition :warn))
-                    (loggers/console :warn (let [expected (transitions state-machine current-state)]
-                                             (str "No transition found for event " ev " in state " current-state
-                                                  (cond
-                                                    (= (count expected) 1) (str "\nExpected:\n" (first expected))
-                                                    (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
+                    (loggers/console :log (let [expected (transitions state-machine current-state)]
+                                            (str "No transition found for event " ev " in state " current-state
+                                                 (cond
+                                                   (= (count expected) 1) (str "\nExpected:\n" (first expected))
+                                                   (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
                   (when debug?
-                    (loggers/console :log (str "\n" path " " (or current-state "<nil>") "\n------\n" ev " -> " new-state)))
+                    (loggers/console :log (str "\n{" (or current-state "<nil>") ", " ev "} -> " new-state)))
                   (if (and (nil? new-state) (contains? on-invalid-transition :prevent))
                     (assoc context :queue nil)
                     (assoc-in context [:coeffects :db] (assoc-in db path (or new-state current-state))))))
