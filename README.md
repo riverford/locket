@@ -26,14 +26,27 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
    [example.db :as db]))
    
 (def state-machine
-  {:path [:auth/state]
-   :initial-state :ready
+  {;; required - the path in the db to store the current state
+   :path [:auth/state]
+
+   ;; required - the state machine transitions - a map of state -> event -> new-state
    :transitions {:ready {:auth/login :logging-in}
                  :logging-in {:auth.login/success :logged-in
                               :auth.login/failure :error}
                  :logged-in {:auth/logout :logging-out}
                  :logging-out {:auth.logout/success :ready}
-                 :error {:auth/login :logging-in}}})
+                 :error {:auth/login :logging-in}}
+
+   ;; optional - the initial state for the state machine
+   :initial-state :ready 
+   
+   ;; optional - set to true to log all transitions
+   :debug? false 
+   
+   ;; optional - set behaviours for when events fire which do not have valid transitions from the current state
+   ;;  :warn - prints a warning message to the console 
+   ;;  :prevent - prevent the reframe event from firing
+   :on-invalid-transition #{:warn :prevent}})
 
 ;; Installing the state machine (via `locket/install-state-machine`) 
 ;; sets up handlers and subscriptions. 
@@ -90,8 +103,6 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
                         (re-frame/dispatch [t]))}
         (name t)])]))
 ```
-
-
 
 ## License
 
