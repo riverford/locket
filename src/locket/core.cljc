@@ -42,7 +42,7 @@
                                                     (= (count expected) 1) (str "\nExpected:\n" (first expected))
                                                     (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
                   (when debug?
-                    (loggers/console :log (str "\n" path " " current-state "\n------\n" ev " -> " new-state)))
+                    (loggers/console :log (str "\n" path " " (or current-state "<nil>") "\n------\n" ev " -> " new-state)))
                   (if (and (nil? new-state) (contains? on-invalid-transition :prevent))
                     (assoc context :queue nil)
                     (assoc-in context [:coeffects :db] (assoc-in db path (or new-state current-state))))))
