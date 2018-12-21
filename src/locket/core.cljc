@@ -7,6 +7,7 @@
             [re-frame.cofx :as cofx]
             [re-frame.fx :as fx]))
 
+
 (defn states
   "Returns all the states from a state machine"
   [state-machine]
@@ -37,10 +38,7 @@
                       new-state (get-in state-machine [:transitions current-state ev])]
                   (if (and (nil? new-state) (contains? on-invalid-transition :warn))
                     (loggers/console :log (let [expected (transitions state-machine current-state)]
-                                            (str "No transition found for event " ev " in state " current-state
-                                                 (cond
-                                                   (= (count expected) 1) (str "\nExpected:\n" (first expected))
-                                                   (= (count expected) 0) (str "\nExpected one of:\n" (string/join "\n" expected)))))))
+                                            (str "No transition found for event " ev " in state " current-state))))
                   (when (and debug? (some? new-state))
                     (loggers/console :log (str "[" (or current-state "<nil>") ", " ev "] -> " new-state)))
                   (if (and (nil? new-state) (contains? on-invalid-transition :prevent))
