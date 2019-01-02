@@ -2,7 +2,7 @@
 
 # Locket
 
-`[riverford/locket "2018.12.19-09"]`
+`[riverford/locket "2019.01.02-01"]`
 
 A pocket-sized state machine library for re-frame. 
 
@@ -10,9 +10,8 @@ A pocket-sized state machine library for re-frame.
 
 If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14/restate-your-ui-creating-a-user-interface-with-re-frame-and-state-machines, you might find yourself wanting a library to reduce the accompanying boiler-plate a little. 
 
-This does exactly that, by providing a re-frame effect handler that registers events for all the state machine transitions, so you don't have to. 
-
-This not only reduces boiler-plate, but also eliminates the risk of your state getting out of sync (i.e. if you forget to call `update-next-state`). 
+This does exactly that, by providing a re-frame effect handler that registers events for all the state machine transitions. 
+This cuts down on much of the boiler-plate and also reduces the risk of your state getting out of sync (i.e. if you forget to call `update-next-state`). 
 
 ## Usage
 
@@ -26,37 +25,24 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
    [example.db :as db]))
    
 (def state-machine
-  {;; required - the path in the db to store the current state
-   :path [:auth/state]
-
-   ;; required - the state machine transitions - a map of state -> event -> new-state
+  {:id :auth
+   :initial-state :ready
    :transitions {:ready {:auth/login :logging-in}
                  :logging-in {:auth.login/success :logged-in
                               :auth.login/failure :error}
                  :logged-in {:auth/logout :logging-out}
                  :logging-out {:auth.logout/success :ready}
-                 :error {:auth/login :logging-in}}
-
-   ;; optional - the initial state for the state machine
-   :initial-state :ready 
-   
-   ;; optional - set to true to log all transitions
-   :debug? false 
-   
-   ;; optional - behaviours for when events fire that do not have valid transitions from the current state
-   ;;  :warn - prints a warning message to the console 
-   ;;  :prevent - prevent the reframe event from firing
-   :on-invalid-transition #{:warn :prevent}})
+                 :error {:auth/login :logging-in}}})
 
 ;; Installing the state machine (via `locket/install-state-machine`) 
-;; sets up handlers and subscriptions. 
+;; sets up handlers and subscriptions for state and transitions (:<id>/state, and :<id>/transitions)
 
 (re-frame/reg-event-fx
  ::init
  (fn [cofx _]
    (let [{:keys [db]} cofx]
      {:db db/default-db
-      :dispatch [:locket/install-state-machine state-machine]})))
+      :locket/install-state-machine state-machine})))
 
 (re-frame/reg-event-fx
   :auth/login
@@ -69,18 +55,6 @@ This not only reduces boiler-plate, but also eliminates the risk of your state g
   (fn [cofx]
     {:dispatch-later [{:ms 3000
                        :dispatch [:auth.logout/success]}]}))
-
-;; Subscriptions for the current state
-(re-frame/reg-sub 
-  :auth/state
-  (fn [db]
-    (get db :auth/state)))
-    
-(re-frame/reg-sub 
-  :auth/transitions
-  :<- [:auth/state]
-  (fn [state]
-    (locket/transitions state-machine state)))
 
 ;; A view showing the current state and available transitions
 (defn main-panel []
