@@ -52,7 +52,7 @@
                 (let [{db :db, event-v :event} (get context :coeffects)
                       [event & args] event-v
                       path (path-fn event-v)
-                      current-state (get-in db path initial-state)
+                      current-state (or (get-in db path) initial-state)
                       new-state (get-in state-machine [:transitions current-state event])]
                   (when debug?
                     (loggers/console
@@ -98,18 +98,18 @@
       sub-state
       (fn [db query-v]
         (let [path (path-fn query-v)]
-          (get-in db path initial-state))))
+          (or (get-in db path) initial-state))))
     (re-frame/reg-sub
       sub-transitions
       (fn [db query-v]
         (let [path (path-fn query-v)
-              state (get-in db path initial-state)]
+              state (or (get-in db path) initial-state)]
           (transitions state-machine state))))))
 
 (defn ensure-path-fn
   "Ensure the state-machine has a path-fn, by constructing it from the id if not provided."
   [state-machine]
-  (let [{:keys [id path-fn]} state-machine]
+  (let [{:keys [id path path-fn]} state-machine]
     (cond-> state-machine
       (nil? path-fn) (assoc :path-fn (constantly [(id->state-key id)])))))
 
