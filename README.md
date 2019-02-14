@@ -10,8 +10,7 @@ A pocket-sized state machine library for re-frame.
 
 If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14/restate-your-ui-creating-a-user-interface-with-re-frame-and-state-machines, you might find yourself wanting a library to reduce the accompanying boiler-plate a little. 
 
-This does exactly that, by adding an interceptor to every state-machine event transition to update the state, 
-and generating any state-machine events that don't need custom code.
+This does exactly that, by adding an interceptor to every state-machine event transition that exists, and generating the ones that don't. 
 
 This cuts down on much of the boiler-plate and also reduces the risk of your state getting out of sync (i.e. if you forget to call `update-next-state`). 
 
