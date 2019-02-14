@@ -2,7 +2,7 @@
 
 # Locket
 
-`[riverford/locket "2019.01.03-01"]`
+`[riverford/locket "2019.02.14-01"]`
 
 A pocket-sized state machine library for re-frame. 
 
@@ -10,7 +10,9 @@ A pocket-sized state machine library for re-frame.
 
 If you've followed the example along at http://blog.cognitect.com/blog/2017/8/14/restate-your-ui-creating-a-user-interface-with-re-frame-and-state-machines, you might find yourself wanting a library to reduce the accompanying boiler-plate a little. 
 
-This does exactly that, by providing a re-frame effect handler that registers events for all the state machine transitions. 
+This does exactly that, by adding an interceptor to every state-machine event transition to update the state, 
+and generating any state-machine events that don't need custom code.
+
 This cuts down on much of the boiler-plate and also reduces the risk of your state getting out of sync (i.e. if you forget to call `update-next-state`). 
 
 ## Usage
@@ -24,25 +26,16 @@ This cuts down on much of the boiler-plate and also reduces the risk of your sta
    [re-frame.core :as re-frame]
    [example.db :as db]))
    
-(def state-machine
-  {:id :auth
-   :initial-state :ready
-   :transitions {:ready {:auth/login :logging-in}
-                 :logging-in {:auth.login/success :logged-in
-                              :auth.login/failure :error}
-                 :logged-in {:auth/logout :logging-out}
-                 :logging-out {:auth.logout/success :ready}
-                 :error {:auth/login :logging-in}}})
-
 ;; Installing the state machine (via `locket/install-state-machine`) 
 ;; sets up handlers and subscriptions for state and transitions (:<id>/state, and :<id>/transitions)
+
+;; --- handlers ---
 
 (re-frame/reg-event-fx
  ::init
  (fn [cofx _]
    (let [{:keys [db]} cofx]
-     {:db db/default-db
-      :locket/install-state-machine state-machine})))
+     {:db db/default-db})))
 
 (re-frame/reg-event-fx
   :auth/login
@@ -56,7 +49,30 @@ This cuts down on much of the boiler-plate and also reduces the risk of your sta
     {:dispatch-later [{:ms 3000
                        :dispatch [:auth.logout/success]}]}))
 
-;; A view showing the current state and available transitions
+(locket/install-state-machine!
+  {:id :auth
+   :initial-state :ready
+   :transitions {:ready {:auth/login :logging-in}
+                 :logging-in {:auth.login/success :logged-in
+                              :auth.login/failure :error}
+                 :logged-in {:auth/logout :logging-out}
+                 :logging-out {:auth.logout/success :ready}
+                 :error {:auth/login :logging-in}}})
+                 
+;; --- subscriptions ---
+
+(reg-sub 
+  :auth/state 
+  (fn [db] 
+    (locket/state :auth db)))
+    
+(reg-sub 
+  :auth/transitions
+  (fn [db] 
+    (locket/transitions :auth db)))
+    
+;; --- views ---
+
 (defn main-panel []
   (let [state (re-frame/subscribe [:auth/state])
         transitions (re-frame/subscribe [:auth/transitions])]
