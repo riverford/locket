@@ -24,9 +24,6 @@ This cuts down on much of the boiler-plate and also reduces the risk of your sta
    [locket.core :as locket]
    [re-frame.core :as re-frame]
    [example.db :as db]))
-   
-;; Installing the state machine (via `locket/install-state-machine`) 
-;; sets up handlers and subscriptions for state and transitions (:<id>/state, and :<id>/transitions)
 
 ;; --- handlers ---
 
