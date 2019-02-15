@@ -77,6 +77,7 @@
 
   Leaves metadata on the interceptor change to indicate that we've been in here and messed around"
   [state-machine]
+  (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)
   (let [{:keys [id]} state-machine
         events (all-transitions state-machine)
         interceptor (interceptor id)]
@@ -90,8 +91,7 @@
           (re-frame/clear-event event)
           (events/register event new-interceptors))
         (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
-                                 {:locket/generated? true}))))
-    (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)))
+                                 {:locket/generated? true}))))))
 
 (defn remove-state-machine!
   "Removes the state machine handling from the re-frame registry for the given state machine."
@@ -107,8 +107,8 @@
           (cond
             altered? (do (re-frame/clear-event event)
                          (events/register event (filter #(not= (:id %) id) interceptors)))
-            generated? (re-frame/clear-event event)))))
-    (swap! db/app-db update :locket/state-machines dissoc id)))
+            generated? (re-frame/clear-event event))))
+      (swap! db/app-db update :locket/state-machines dissoc id))))
 
 (defn transition->str
   "Takes fired transition data and turns it into a neat string representation"
