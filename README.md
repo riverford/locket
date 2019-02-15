@@ -2,7 +2,7 @@
 
 # Locket
 
-`[riverford/locket "2019.02.15-02"]`
+`[riverford/locket "2019.02.15-03"]`
 
 A pocket-sized state machine library for re-frame. 
 

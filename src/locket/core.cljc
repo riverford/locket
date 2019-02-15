@@ -77,21 +77,21 @@
 
   Leaves metadata on the interceptor change to indicate that we've been in here and messed around"
   [state-machine]
-  (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)
-  (let [{:keys [id]} state-machine
-        events (all-transitions state-machine)
-        interceptor (interceptor id)]
-    (doseq [event events
-            :let [interceptors (registrar/get-handler :event event)]]
-      (if interceptors
-        ;; insert the state machine interceptor before the core handler
-        (let [new-interceptors (with-meta (concat (butlast interceptors)
-                                                  [interceptor (last interceptors)])
-                                 {:locket/altered? true})]
-          (re-frame/clear-event event)
-          (events/register event new-interceptors))
-        (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
-                                 {:locket/generated? true}))))))
+  (let [{:keys [id]} state-machine]
+    (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)
+    (let [events (all-transitions state-machine)
+          interceptor (interceptor id)]
+      (doseq [event events
+              :let [interceptors (registrar/get-handler :event event)]]
+        (if interceptors
+          ;; insert the state machine interceptor before the core handler
+          (let [new-interceptors (with-meta (concat (butlast interceptors)
+                                                    [interceptor (last interceptors)])
+                                   {:locket/altered? true})]
+            (re-frame/clear-event event)
+            (events/register event new-interceptors))
+          (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
+                                   {:locket/generated? true})))))))
 
 (defn remove-state-machine!
   "Removes the state machine handling from the re-frame registry for the given state machine."
