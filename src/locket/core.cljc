@@ -8,7 +8,7 @@
             [re-frame.fx :as fx]
             [re-frame.db :as db]))
 
-(defonce state-machines
+(defonce registry
   (atom {}))
 
 (defn all-transitions
@@ -22,8 +22,7 @@
   ([id db]
    (state id db nil))
   ([id db query-v]
-   (let [state-machine (get @state-machines id)
-         {:keys [path-fn initial-state]} state-machine
+   (let [{:keys [path-fn initial-state]} (get-in @registry [id :state-machine])
          path (path-fn query-v)]
      (get-in db path initial-state))))
 
@@ -32,8 +31,7 @@
   ([id db]
    (transitions id db nil))
   ([id db query-v]
-   (let [state-machine (get @state-machines id)
-         {:keys [transitions]} state-machine]
+   (let [{:keys [transitions]} (get-in @registry [id :state-machine])]
      (into #{} (comp (map second) cat (map first)) transitions))))
 
 (defn- interceptor
@@ -43,32 +41,31 @@
    * Removes any events when the transition is not found in the state machine.
    * `path-fn` is called on the event-v of the event to find the path to update
    * The `debug-fn` will be called with the transition data if debug? is true"
-  [id]
-  (re-frame/->interceptor
-    :id id
-    :before (fn [context]
-              (let [{db :db, event-v :event} (get context :coeffects)
-                    state-machine (get @state-machines db)
-                    {:keys [id initial-state path-fn debug? debug-fn]} state-machine
-                    [event & args] event-v
-                    path (path-fn event-v)
-                    current-state (get-in db path initial-state)
-                    new-state (get-in state-machine [:transitions current-state event])]
-                (when debug?
-                  (debug-fn {:path path
-                             :current-state current-state
-                             :event event
-                             :new-state new-state}))
-                ;; stop the event from happening at all if there is no transition
-                (if (nil? new-state)
-                  (assoc context :queue nil)
-                  (assoc-in context [:coeffects :db] (assoc-in db path (or new-state current-state))))))
-    :after (fn [context]
-             ;; ensure that the db coeffect becomes an effect if it is present
-             (if (and (get-in context [:coeffects :db])
-                      (not (get-in context [:effects :db])))
-               (assoc-in context [:effects :db] (get-in context [:coeffects :db]))
-               context))))
+  [state-machine]
+  (let [{:keys [id initial-state path-fn debug? debug-fn]} state-machine]
+    (re-frame/->interceptor
+      :id id
+      :before (fn [context]
+                (let [{db :db, event-v :event} (get context :coeffects)
+                      [event & args] event-v
+                      path (path-fn event-v)
+                      current-state (get-in db path initial-state)
+                      new-state (get-in state-machine [:transitions current-state event])]
+                  (when debug?
+                    (debug-fn {:path path
+                               :current-state current-state
+                               :event event
+                               :new-state new-state}))
+                  ;; stop the event from happening at all if there is no transition
+                  (if (nil? new-state)
+                    (assoc context :queue nil)
+                    (assoc-in context [:coeffects :db] (assoc-in db path (or new-state current-state))))))
+      :after (fn [context]
+               ;; ensure that the db coeffect becomes an effect if it is present
+               (if (and (get-in context [:coeffects :db])
+                        (not (get-in context [:effects :db])))
+                 (assoc-in context [:effects :db] (get-in context [:coeffects :db]))
+                 context)))))
 
 (defn- add-state-machine!
   "Adds the state machine handling to the re-frame registry for the given state machine.
@@ -80,38 +77,54 @@
 
   Leaves metadata on the interceptor change to indicate that we've been in here and messed around"
   [state-machine]
-  (let [{:keys [id]} state-machine]
-    (swap! state-machines assoc id state-machine)
-    (let [events (all-transitions state-machine)
-          interceptor (interceptor id)]
-      (doseq [event events
-              :let [interceptors (registrar/get-handler :event event)]]
-        (if interceptors
-          ;; insert the state machine interceptor before the core handler
-          (let [new-interceptors (with-meta (concat (butlast interceptors)
-                                                    [interceptor (last interceptors)])
-                                   {:locket/altered? true})]
-            (re-frame/clear-event event)
-            (events/register event new-interceptors))
-          (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
-                                   {:locket/generated? true})))))))
+  (let [{:keys [id]} state-machine
+        events (all-transitions state-machine)
+        interceptor (interceptor state-machine)]
+    (swap! registry (fn [registry]
+                      (-> (reduce
+                            (fn [registry event]
+                              (let [interceptors (registrar/get-handler :event event)]
+                                (if interceptors
+                                  ;; insert the state machine interceptor before the core handler
+                                  (let [new-interceptors (concat (butlast interceptors)
+                                                                 [interceptor (last interceptors)])]
+                                    (re-frame/clear-event event)
+                                    (events/register event new-interceptors)
+                                    (update-in registry [id :altered-events] (fnil conj #{}) event))
+
+                                  (do
+                                    (events/register event [cofx/inject-db fx/do-fx interceptor])
+                                    (update-in registry [id :generated-events] (fnil conj #{}) event)))))
+                            registry
+                            events)
+                          (assoc-in [id :state-machine] state-machine))))))
 
 (defn- remove-state-machine!
-  "Removes the state machine handling from the re-frame registry for the given state machine."
+  "Removes the state machine handling for the given state machine,
+   removing any generated events and the taking the state machine interceptor out of the
+   interceptor chains."
   [id]
-  (let [{:keys [state-machine]} (get-in @state-machines id)]
-    (when state-machine
-      (let [events (all-transitions state-machine)
-            interceptor (interceptor id)]
-        (doseq [event events
-                :let [interceptors (registrar/get-handler :event event)
-                      {:locket/keys [altered? generated?]} (meta interceptors)]]
-          (loggers/console :log altered? generated? interceptors)
-          (cond
-            altered? (do (re-frame/clear-event event)
-                         (events/register event (filter #(not= (:id %) id) interceptors)))
-            generated? (re-frame/clear-event event))))
-      (swap! state-machines dissoc id))))
+  (when-let [{:keys [state-machine altered-events generated-events]} (get @registry id)]
+    (let [remove-generated-events (fn [registry]
+                                    (reduce
+                                      (fn [registry event]
+                                        (re-frame/clear-event event)
+                                        (update-in registry [id :generated-events] disj event))
+                                      registry
+                                      generated-events))
+          revert-altered-events (fn [registry]
+                                  (reduce
+                                    (fn [registry event]
+                                      (let [interceptors (registrar/get-handler :event event)]
+                                        (re-frame/clear-event event)
+                                        (events/register event (filter #(not= (:id %) id) interceptors))
+                                        (update-in registry [id :altered-events] disj event)))
+                                    registry
+                                    altered-events))]
+      (swap! registry (fn [registry]
+                        (-> (revert-altered-events registry)
+                            (remove-generated-events)
+                            (dissoc id)))))))
 
 (defn transition->str
   "Takes fired transition data and turns it into a neat string representation"
