@@ -8,6 +8,9 @@
             [re-frame.fx :as fx]
             [re-frame.db :as db]))
 
+(defonce state-machines
+  (atom {}))
+
 (defn all-transitions
   "Returns all the unique transitions (events) that a state machine handles"
   [state-machine]
@@ -19,7 +22,7 @@
   ([id db]
    (state id db nil))
   ([id db query-v]
-   (let [state-machine (get-in db [:locket/state-machines id])
+   (let [state-machine (get @state-machines id)
          {:keys [path-fn initial-state]} state-machine
          path (path-fn query-v)]
      (get-in db path initial-state))))
@@ -29,11 +32,11 @@
   ([id db]
    (transitions id db nil))
   ([id db query-v]
-   (let [state-machine (get-in db [:locket/state-machines id])
+   (let [state-machine (get @state-machines id)
          {:keys [transitions]} state-machine]
      (into #{} (comp (map second) cat (map first)) transitions))))
 
-(defn interceptor
+(defn- interceptor
   "Generic interceptor for state machine interactions.
 
    * Updates the state of the state machine based on the reframe event
@@ -45,7 +48,7 @@
     :id id
     :before (fn [context]
               (let [{db :db, event-v :event} (get context :coeffects)
-                    state-machine (get-in db [:locket/state-machines id])
+                    state-machine (get @state-machines db)
                     {:keys [id initial-state path-fn debug? debug-fn]} state-machine
                     [event & args] event-v
                     path (path-fn event-v)
@@ -67,7 +70,7 @@
                (assoc-in context [:effects :db] (get-in context [:coeffects :db]))
                context))))
 
-(defn add-state-machine!
+(defn- add-state-machine!
   "Adds the state machine handling to the re-frame registry for the given state machine.
 
   Detects existing event handlers and interceptor chains, and replaces them with
@@ -78,7 +81,7 @@
   Leaves metadata on the interceptor change to indicate that we've been in here and messed around"
   [state-machine]
   (let [{:keys [id]} state-machine]
-    (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)
+    (swap! state-machines assoc id state-machine)
     (let [events (all-transitions state-machine)
           interceptor (interceptor id)]
       (doseq [event events
@@ -93,10 +96,10 @@
           (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
                                    {:locket/generated? true})))))))
 
-(defn remove-state-machine!
+(defn- remove-state-machine!
   "Removes the state machine handling from the re-frame registry for the given state machine."
   [id]
-  (let [{:keys [state-machine]} (get-in @db/app-db [:locket/state-machines id])]
+  (let [{:keys [state-machine]} (get-in @state-machines id)]
     (when state-machine
       (let [events (all-transitions state-machine)
             interceptor (interceptor id)]
@@ -108,7 +111,7 @@
             altered? (do (re-frame/clear-event event)
                          (events/register event (filter #(not= (:id %) id) interceptors)))
             generated? (re-frame/clear-event event))))
-      (swap! db/app-db update :locket/state-machines dissoc id))))
+      (swap! state-machines dissoc id))))
 
 (defn transition->str
   "Takes fired transition data and turns it into a neat string representation"
@@ -119,7 +122,7 @@
            "-x No transition found"
            (str "-> " new-state)))))
 
-(defn patch-state-machine
+(defn- patch-state-machine
   "Patch up the state machine Ensure the state-machine has a path-fn, by constructing it from the id if not provided."
   [state-machine]
   (let [{:keys [id path-fn debug-fn]} state-machine]
