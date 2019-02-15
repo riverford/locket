@@ -30,10 +30,7 @@
    (transitions id db nil))
   ([id db query-v]
    (let [state-machine (get-in db [:locket/state-machines id])
-         {:keys [path-fn]} state-machine
-         path (path-fn query-v)
-         state (get-in db path initial-state)
-         {:keys [transitions]}]
+         {:keys [transitions]} state-machine]
      (into #{} (comp (map second) cat (map first)) transitions))))
 
 (defn interceptor
@@ -49,7 +46,7 @@
     :before (fn [context]
               (let [{db :db, event-v :event} (get context :coeffects)
                     state-machine (get-in db [:locket/state-machines id])
-                    {:keys [id initial-state path-fn debug?]} state-machine
+                    {:keys [id initial-state path-fn debug? debug-fn]} state-machine
                     [event & args] event-v
                     path (path-fn event-v)
                     current-state (get-in db path initial-state)
@@ -89,8 +86,7 @@
         ;; insert the state machine interceptor before the core handler
         (let [new-interceptors (with-meta (concat (butlast interceptors)
                                                   [interceptor (last interceptors)])
-                                 {:locket/previous-interceptors interceptors
-                                  :locket/generated? true})]
+                                 {:locket/altered? true})]
           (re-frame/clear-event event)
           (events/register event new-interceptors))
         (events/register event (with-meta [cofx/inject-db fx/do-fx interceptor]
@@ -98,40 +94,38 @@
     (swap! db/app-db assoc-in [:locket/state-machines id] state-machine)))
 
 (defn remove-state-machine!
-  "Removes the state machine handling from the re-frame registry for the given state machine.
-
-   For any interceptors that have been added, restore the previous interceptor chain.
-   If there is no previous interceptor chain, we can remove the event entirely"
+  "Removes the state machine handling from the re-frame registry for the given state machine."
   [id]
   (let [{:keys [state-machine]} (get-in @db/app-db [:locket/state-machines id])]
     (when state-machine
       (let [events (all-transitions state-machine)
-            interceptor (interceptor id)])
-      (doseq [event events
-              :let [interceptors (registrar/get-handler :event event)
-                    {:locket/keys [generated? previous-interceptors]} (meta interceptors)]
-              :when generated?]
-        (if previous-interceptors
-          (do (re-frame/clear-event event)
-              (events/register event previous-interceptors))
-          (re-frame/clear-event event))))
+            interceptor (interceptor id)]
+        (doseq [event events
+                :let [interceptors (registrar/get-handler :event event)
+                      {:locket/keys [altered? generated?]} (meta interceptors)]]
+          (loggers/console :log altered? generated? interceptors)
+          (cond
+            altered? (do (re-frame/clear-event event)
+                         (events/register event (filter #(not= (:id %) id) interceptors)))
+            generated? (re-frame/clear-event event)))))
     (swap! db/app-db update :locket/state-machines dissoc id)))
 
 (defn transition->str
   "Takes fired transition data and turns it into a neat string representation"
   [transition]
-  (str path " • [" (or current-state "<nil>") ", " (or event "<nil>") "] "
-       (if (nil? new-state)
-         "-x No transition found"
-         (str "-> " new-state))))
+  (let [{:keys [path current-state event new-state]} transition]
+    (str path " • [" (or current-state "<nil>") ", " (or event "<nil>") "] "
+         (if (nil? new-state)
+           "-x No transition found"
+           (str "-> " new-state)))))
 
 (defn patch-state-machine
   "Patch up the state machine Ensure the state-machine has a path-fn, by constructing it from the id if not provided."
   [state-machine]
   (let [{:keys [id path-fn debug-fn]} state-machine]
     (cond-> state-machine
-      (nil? path-fn) (assoc :path-fn (constantly [(id->state-key id)]))
-      (nil? debug-fn) (assoc :debug-fn (fn [transition] (loggers/log :log (transition->str transition)))))))
+      (nil? path-fn) (assoc :path-fn (constantly [:locket/state id]))
+      (nil? debug-fn) (assoc :debug-fn (fn [transition] (loggers/console :log (transition->str transition)))))))
 
 (defn install-state-machine!
   "Installs a locket state machine. This function is side-effecting and alters the re-frame registry.
