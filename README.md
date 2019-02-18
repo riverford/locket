@@ -2,7 +2,7 @@
 
 # Locket
 
-`[riverford/locket "2019.02.15-05"]`
+`[riverford/locket "2019.02.18-03"]`
 
 A pocket-sized state machine library for re-frame. 
 
@@ -60,12 +60,12 @@ This cuts down on much of the boiler-plate and also reduces the risk of your sta
 (reg-sub 
   :auth/state 
   (fn [db] 
-    (locket/state :auth db)))
+    (locket/state db :auth)))
     
 (reg-sub 
   :auth/transitions
   (fn [db] 
-    (locket/transitions :auth db)))
+    (locket/transitions db :auth)))
     
 ;; --- views ---
 

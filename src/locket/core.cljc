@@ -19,20 +19,29 @@
 
 (defn state
   "Returns the current state of a state machine, given the id, a re-frame db and an optional query-v"
-  ([id db]
-   (state id db nil))
-  ([id db query-v]
+  ([db id]
+   (state db id nil))
+  ([db id query-v]
    (let [{:keys [path-fn initial-state]} (get-in @registry [id :state-machine])
          path (path-fn query-v)]
      (get-in db path initial-state))))
 
 (defn transitions
   "Returns the transitions from the current state of a state machine"
-  ([id db]
-   (transitions id db nil))
-  ([id db query-v]
+  ([db id]
+   (transitions db id nil))
+  ([db id query-v]
    (let [{:keys [transitions]} (get-in @registry [id :state-machine])]
      (into #{} (comp (map second) cat (map first)) transitions))))
+
+(defn reset-state
+  "Returns a db with the state machine reset to its initial state"
+  ([db id]
+   (reset-state db id nil))
+  ([db id query-v]
+   (let [{:keys [path-fn initial-state]} (get-in @registry [id :state-machine])
+         path (path-fn query-v)]
+     (assoc-in db path initial-state))))
 
 (defn- interceptor
   "Generic interceptor for state machine interactions.
